@@ -273,100 +273,267 @@ function ActionItem({ action, color, accent, vectorId, idx, onToggle }) {
 }
 
 const NODE_POSITIONS = {
-  1: { x: 120, y: 90 },
-  2: { x: 350, y: 90 },
-  3: { x: 580, y: 90 },
-  4: { x: 120, y: 270 },
-  5: { x: 350, y: 270 },
-  6: { x: 580, y: 270 },
+  1: { x: 245, y: 185 },
+  2: { x: 415, y: 82 },
+  3: { x: 578, y: 162 },
+  4: { x: 552, y: 295 },
+  5: { x: 290, y: 308 },
+  6: { x: 105, y: 262 },
+};
+
+const hexPath = (cx, cy, r) => {
+  const pts = Array.from({ length: 6 }, (_, i) => {
+    const a = (Math.PI / 180) * (60 * i - 30);
+    return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
+  });
+  return `M${pts.join("L")}Z`;
 };
 
 function ConnectionDiagram() {
-  const [hoveredEdge, setHoveredEdge] = useState(null);
-  const R = 38;
+  const [selectedNode, setSelectedNode] = useState(null);
+  const R = 36;
+
+  const toggleNode = (id) => setSelectedNode(prev => prev === id ? null : id);
 
   return (
-    <div style={{ background: "rgba(15,15,20,0.85)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: 20, marginBottom: 12 }}>
-      <h3 style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: "#F1FAEE", margin: "0 0 16px", fontWeight: 400 }}>
-        Strategic Interconnections
-      </h3>
-      <svg viewBox="0 0 700 360" width="100%" style={{ display: "block", overflow: "visible" }}>
-        <defs>
-          {VECTORS.map(v => (
-            <marker key={v.id} id={`arrow-${v.id}`} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-              <path d="M0,0 L0,6 L8,3 z" fill={v.color} opacity="0.7" />
-            </marker>
-          ))}
-        </defs>
-
-        {/* Edges */}
-        {CONNECTIONS.map((c, i) => {
-          const from = NODE_POSITIONS[c.from];
-          const to   = NODE_POSITIONS[c.to];
-          const dx = to.x - from.x;
-          const dy = to.y - from.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const ux = dx / dist;
-          const uy = dy / dist;
-          const x1 = from.x + ux * R;
-          const y1 = from.y + uy * R;
-          const x2 = to.x   - ux * (R + 6);
-          const y2 = to.y   - uy * (R + 6);
-          const mx = (x1 + x2) / 2 - uy * 40;
-          const my = (y1 + y2) / 2 + ux * 40;
-          const color = VECTORS[c.from - 1].color;
-          const isHovered = hoveredEdge === i;
-          return (
-            <g key={i} onMouseEnter={() => setHoveredEdge(i)} onMouseLeave={() => setHoveredEdge(null)} style={{ cursor: "default" }}>
-              <path
-                d={`M${x1},${y1} Q${mx},${my} ${x2},${y2}`}
-                fill="none"
-                stroke={color}
-                strokeWidth={isHovered ? 2 : 1.2}
-                strokeOpacity={isHovered ? 0.9 : 0.4}
-                markerEnd={`url(#arrow-${c.from})`}
-                style={{ transition: "stroke-opacity 0.2s, stroke-width 0.2s" }}
-              />
-              {isHovered && (
-                <text
-                  x={(x1 + x2) / 2 - uy * 52}
-                  y={(y1 + y2) / 2 + ux * 52}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fontFamily="'JetBrains Mono', monospace"
-                  fill="rgba(241,250,238,0.7)"
-                >
-                  {c.label}
-                </text>
-              )}
-            </g>
-          );
-        })}
-
-        {/* Nodes */}
-        {VECTORS.map(v => {
-          const { x, y } = NODE_POSITIONS[v.id];
-          return (
-            <g key={v.id}>
-              <circle cx={x} cy={y} r={R} fill={v.color} fillOpacity="0.15" stroke={v.color} strokeWidth="1.5" strokeOpacity="0.6" />
-              <text x={x} y={y - 10} textAnchor="middle" fontSize="18" dominantBaseline="middle">{v.icon}</text>
-              <text x={x} y={y + 12} textAnchor="middle" fontSize="10" fontWeight="700" fontFamily="'JetBrains Mono', monospace" fill="#F1FAEE" fillOpacity="0.9">{v.id}</text>
-            </g>
-          );
-        })}
-      </svg>
-
-      {/* Legend */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", marginTop: 14 }}>
-        {VECTORS.map(v => (
-          <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.5)" }}>
-            <span style={{ width: 8, height: 8, borderRadius: "50%", background: v.color, display: "inline-block", flexShrink: 0 }} />
-            {v.id}. {v.title}
+    <div style={{ background: "rgba(10,10,16,0.95)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "18px 18px 14px", marginBottom: 12 }}>
+      {/* Header bar */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.25)", letterSpacing: 3, textTransform: "uppercase", marginBottom: 3 }}>
+            Strategic Overview Map
           </div>
+          <h3 style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 17, color: "#F1FAEE", margin: 0, fontWeight: 400, lineHeight: 1 }}>
+            Vector Interconnections
+          </h3>
+        </div>
+        <div style={{ fontSize: 8, fontFamily: "'JetBrains Mono', monospace", color: "#E63946", letterSpacing: 2, border: "1px solid rgba(230,57,70,0.4)", padding: "4px 8px", borderRadius: 2, display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#E63946", display: "inline-block", animation: "pulse 2s infinite" }} />
+          ACTIVE OPERATION
+        </div>
+      </div>
+
+      {/* Map canvas */}
+      <div style={{ borderRadius: 3, overflow: "hidden", border: "1px solid rgba(255,255,255,0.05)" }}>
+        <svg viewBox="0 0 700 400" width="100%" style={{ display: "block", background: "#05070E" }}>
+          <defs>
+            <pattern id="mg-major" width="80" height="80" patternUnits="userSpaceOnUse">
+              <path d="M80,0 L0,0 0,80" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5" />
+            </pattern>
+            <pattern id="mg-minor" width="20" height="20" patternUnits="userSpaceOnUse">
+              <path d="M20,0 L0,0 0,20" fill="none" stroke="rgba(255,255,255,0.015)" strokeWidth="0.3" />
+            </pattern>
+            {VECTORS.map(v => (
+              <marker key={v.id} id={`ma-${v.id}`} markerWidth="7" markerHeight="7" refX="5" refY="2.5" orient="auto">
+                <polygon points="0,0 7,2.5 0,5" fill={v.color} fillOpacity="0.85" />
+              </marker>
+            ))}
+          </defs>
+
+          {/* Grid layers */}
+          <rect width="700" height="400" fill="url(#mg-minor)" />
+          <rect width="700" height="400" fill="url(#mg-major)" />
+
+          {/* Border rule lines */}
+          <rect x="22" y="22" width="656" height="356" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="0.5" />
+          <rect x="24" y="24" width="652" height="352" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="0.5" />
+
+          {/* Axis tick marks + coord labels */}
+          {[100, 200, 300, 400, 500, 600].map(x => (
+            <g key={`tx-${x}`}>
+              <line x1={x} y1={22} x2={x} y2={30} stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" />
+              <line x1={x} y1={370} x2={x} y2={378} stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" />
+              <text x={x} y={18} textAnchor="middle" fontSize="7" fontFamily="'JetBrains Mono', monospace" fill="rgba(255,255,255,0.13)">{String(x).padStart(3,"0")}</text>
+            </g>
+          ))}
+          {[80, 160, 240, 320].map(y => (
+            <g key={`ty-${y}`}>
+              <line x1={22} y1={y} x2={30} y2={y} stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" />
+              <line x1={670} y1={y} x2={678} y2={y} stroke="rgba(255,255,255,0.12)" strokeWidth="0.5" />
+              <text x={17} y={y + 3} textAnchor="middle" fontSize="7" fontFamily="'JetBrains Mono', monospace" fill="rgba(255,255,255,0.13)">{String(y).padStart(3,"0")}</text>
+            </g>
+          ))}
+
+          {/* Watermark */}
+          <text x="350" y="210" textAnchor="middle" fontSize="80" fontFamily="'Instrument Serif', Georgia, serif"
+            fill="rgba(255,255,255,0.013)" fontStyle="italic" transform="rotate(-12,350,210)">CLASSIFIED</text>
+
+          {/* Edges */}
+          {CONNECTIONS.map((c, i) => {
+            const from = NODE_POSITIONS[c.from];
+            const to   = NODE_POSITIONS[c.to];
+            const dx = to.x - from.x, dy = to.y - from.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const ux = dx / dist, uy = dy / dist;
+            const x1 = from.x + ux * (R + 3);
+            const y1 = from.y + uy * (R + 3);
+            const x2 = to.x   - ux * (R + 9);
+            const y2 = to.y   - uy * (R + 9);
+            const curveOff = 35;
+            const mx = (x1 + x2) / 2 - uy * curveOff;
+            const my = (y1 + y2) / 2 + ux * curveOff;
+            const color = VECTORS[c.from - 1].color;
+            const isActive = !selectedNode || c.from === selectedNode || c.to === selectedNode;
+            const labelX = (x1 + 2 * mx + x2) / 4 - uy * (curveOff + 10);
+            const labelY = (y1 + 2 * my + y2) / 4 + ux * (curveOff + 10);
+            return (
+              <g key={i}>
+                {/* glow halo */}
+                <path d={`M${x1},${y1} Q${mx},${my} ${x2},${y2}`} fill="none"
+                  stroke={color} strokeWidth="5" strokeOpacity={isActive ? 0.07 : 0.015} />
+                {/* route line */}
+                <path d={`M${x1},${y1} Q${mx},${my} ${x2},${y2}`} fill="none"
+                  stroke={color}
+                  strokeWidth={isActive ? 1.6 : 0.5}
+                  strokeOpacity={isActive ? 0.72 : 0.12}
+                  strokeDasharray="5,4"
+                  markerEnd={`url(#ma-${c.from})`}
+                  style={{ transition: "stroke-opacity 0.25s, stroke-width 0.25s" }}
+                />
+                {/* label — only when edge is active */}
+                {isActive && (
+                  <text x={labelX} y={labelY} textAnchor="middle" fontSize="8.5"
+                    fontFamily="'JetBrains Mono', monospace" fill={color} fillOpacity="0.55"
+                    style={{ pointerEvents: "none" }}>
+                    {c.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Nodes */}
+          {VECTORS.map(v => {
+            const { x, y } = NODE_POSITIONS[v.id];
+            const isSel = selectedNode === v.id;
+            const isDimmed = selectedNode && !isSel &&
+              !CONNECTIONS.some(c => (c.from === selectedNode && c.to === v.id) || (c.to === selectedNode && c.from === v.id));
+            return (
+              <g key={v.id} onClick={() => toggleNode(v.id)} style={{ cursor: "pointer" }}>
+                {/* animated pulse ring — active vector or selected */}
+                {(v.status === "ACTIVE" || isSel) && (
+                  <circle cx={x} cy={y} r={R + 5} fill="none" stroke={v.color} strokeWidth="0.8" strokeOpacity="0">
+                    <animate attributeName="r"     values={`${R+4};${R+18};${R+4}`} dur="2.8s" repeatCount="indefinite" />
+                    <animate attributeName="stroke-opacity" values="0.45;0;0.45"    dur="2.8s" repeatCount="indefinite" />
+                  </circle>
+                )}
+                {/* outer hex glow */}
+                <path d={hexPath(x, y, R + 5)} fill={v.color} fillOpacity={isSel ? 0.18 : isDimmed ? 0.02 : 0.06}
+                  style={{ transition: "fill-opacity 0.25s" }} />
+                {/* hex body */}
+                <path d={hexPath(x, y, R)}
+                  fill={v.color} fillOpacity={isDimmed ? 0.04 : isSel ? 0.28 : 0.13}
+                  stroke={v.color} strokeWidth={isSel ? 2 : 1}
+                  strokeOpacity={isDimmed ? 0.15 : isSel ? 1 : 0.6}
+                  style={{ transition: "all 0.25s" }} />
+                {/* inner hex accent ring */}
+                <path d={hexPath(x, y, R - 7)} fill="none" stroke={v.color}
+                  strokeWidth="0.5" strokeOpacity={isDimmed ? 0.08 : 0.28} />
+                {/* crosshair dots at hex vertices */}
+                {[0,1,2,3,4,5].map(i => {
+                  const a = (Math.PI / 180) * (60 * i - 30);
+                  return <circle key={i} cx={x + R * Math.cos(a)} cy={y + R * Math.sin(a)}
+                    r="1.5" fill={v.color} fillOpacity={isDimmed ? 0.1 : 0.35} />;
+                })}
+                {/* icon */}
+                <text x={x} y={y - 7} textAnchor="middle" fontSize="19"
+                  dominantBaseline="middle" opacity={isDimmed ? 0.2 : 1}>{v.icon}</text>
+                {/* vector ID */}
+                <text x={x} y={y + 15} textAnchor="middle" fontSize="11"
+                  fontFamily="'JetBrains Mono', monospace" fontWeight="700"
+                  fill={v.color} fillOpacity={isDimmed ? 0.2 : 0.9}>{v.id}</text>
+              </g>
+            );
+          })}
+
+          {/* Corner brackets */}
+          {[[24,24,1,1],[676,24,-1,1],[676,376,-1,-1],[24,376,1,-1]].map(([cx,cy,sx,sy],i) => (
+            <g key={i}>
+              <line x1={cx} y1={cy} x2={cx + sx*14} y2={cy} stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+              <line x1={cx} y1={cy} x2={cx} y2={cy + sy*14} stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+            </g>
+          ))}
+        </svg>
+      </div>
+
+      {/* Selected node detail panel */}
+      {selectedNode && (() => {
+        const v = VECTORS.find(x => x.id === selectedNode);
+        const outgoing = CONNECTIONS.filter(c => c.from === selectedNode);
+        const incoming = CONNECTIONS.filter(c => c.to === selectedNode);
+        return (
+          <div style={{ marginTop: 10, padding: "12px 14px", background: "rgba(8,10,18,0.95)", border: `1px solid ${v.color}30`, borderRadius: 4, borderLeft: `3px solid ${v.color}` }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 8, fontFamily: "'JetBrains Mono', monospace", color: v.color, letterSpacing: 2.5, textTransform: "uppercase", marginBottom: 4 }}>
+                  Vector {v.id} &nbsp;·&nbsp; {v.status} &nbsp;·&nbsp; {v.court}
+                </div>
+                <div style={{ fontSize: 14, fontFamily: "'Instrument Serif', Georgia, serif", color: "#F1FAEE", marginBottom: 3 }}>
+                  {v.icon}&nbsp; {v.title}
+                </div>
+                <div style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.4)", lineHeight: 1.4 }}>{v.summary}</div>
+              </div>
+              <button onClick={() => setSelectedNode(null)}
+                style={{ background: "none", border: "none", color: "rgba(241,250,238,0.3)", cursor: "pointer", fontSize: 14, padding: "0 0 0 12px", lineHeight: 1 }}>✕</button>
+            </div>
+            {(outgoing.length > 0 || incoming.length > 0) && (
+              <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: outgoing.length && incoming.length ? "1fr 1fr" : "1fr", gap: 10 }}>
+                {outgoing.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 8, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.2)", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Feeds Into</div>
+                    {outgoing.map((c, i) => {
+                      const tgt = VECTORS.find(x => x.id === c.to);
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 5 }}>
+                          <span style={{ color: tgt.color, fontSize: 11, lineHeight: 1.3 }}>→</span>
+                          <div>
+                            <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: tgt.color }}>{tgt.icon} {tgt.title}</div>
+                            <div style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.3)", marginTop: 1 }}>{c.label}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {incoming.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 8, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.2)", letterSpacing: 2, textTransform: "uppercase", marginBottom: 6 }}>Receives From</div>
+                    {incoming.map((c, i) => {
+                      const src = VECTORS.find(x => x.id === c.from);
+                      return (
+                        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, marginBottom: 5 }}>
+                          <span style={{ color: src.color, fontSize: 11, lineHeight: 1.3 }}>←</span>
+                          <div>
+                            <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: src.color }}>{src.icon} {src.title}</div>
+                            <div style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.3)", marginTop: 1 }}>{c.label}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Map index / legend */}
+      <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: "4px 12px" }}>
+        {VECTORS.map(v => (
+          <button key={v.id} onClick={() => toggleNode(v.id)}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 5, padding: "2px 0" }}>
+            <span style={{ width: 6, height: 6, background: v.color, display: "inline-block", transform: "rotate(45deg)", flexShrink: 0, opacity: selectedNode && selectedNode !== v.id ? 0.35 : 1 }} />
+            <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace",
+              color: selectedNode === v.id ? v.color : "rgba(241,250,238,0.35)",
+              style: "transition: color 0.2s" }}>
+              {v.id}. {v.title}
+            </span>
+          </button>
         ))}
       </div>
-      <div style={{ marginTop: 8, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.25)", fontStyle: "italic" }}>
-        Hover over edges to see connection labels
+      <div style={{ marginTop: 5, fontSize: 9, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.18)", fontStyle: "italic" }}>
+        Click any node to highlight its connections and view details
       </div>
     </div>
   );
