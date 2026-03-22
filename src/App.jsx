@@ -272,25 +272,101 @@ function ActionItem({ action, color, accent, vectorId, idx, onToggle }) {
   );
 }
 
+const NODE_POSITIONS = {
+  1: { x: 120, y: 90 },
+  2: { x: 350, y: 90 },
+  3: { x: 580, y: 90 },
+  4: { x: 120, y: 270 },
+  5: { x: 350, y: 270 },
+  6: { x: 580, y: 270 },
+};
+
 function ConnectionDiagram() {
+  const [hoveredEdge, setHoveredEdge] = useState(null);
+  const R = 38;
+
   return (
     <div style={{ background: "rgba(15,15,20,0.85)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: 20, marginBottom: 12 }}>
-      <h3 style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: "#F1FAEE", margin: "0 0 14px", fontWeight: 400 }}>
+      <h3 style={{ fontFamily: "'Instrument Serif', Georgia, serif", fontSize: 16, color: "#F1FAEE", margin: "0 0 16px", fontWeight: 400 }}>
         Strategic Interconnections
       </h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {CONNECTIONS.map((c, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
-            <span style={{ background: VECTORS[c.from - 1].color, color: "#fff", width: 22, height: 22, borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
-              {c.from}
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: 16 }}>→</span>
-            <span style={{ background: VECTORS[c.to - 1].color, color: "#fff", width: 22, height: 22, borderRadius: 3, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>
-              {c.to}
-            </span>
-            <span style={{ color: "rgba(241,250,238,0.45)", fontSize: 11 }}>{c.label}</span>
+      <svg viewBox="0 0 700 360" width="100%" style={{ display: "block", overflow: "visible" }}>
+        <defs>
+          {VECTORS.map(v => (
+            <marker key={v.id} id={`arrow-${v.id}`} markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill={v.color} opacity="0.7" />
+            </marker>
+          ))}
+        </defs>
+
+        {/* Edges */}
+        {CONNECTIONS.map((c, i) => {
+          const from = NODE_POSITIONS[c.from];
+          const to   = NODE_POSITIONS[c.to];
+          const dx = to.x - from.x;
+          const dy = to.y - from.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const ux = dx / dist;
+          const uy = dy / dist;
+          const x1 = from.x + ux * R;
+          const y1 = from.y + uy * R;
+          const x2 = to.x   - ux * (R + 6);
+          const y2 = to.y   - uy * (R + 6);
+          const mx = (x1 + x2) / 2 - uy * 40;
+          const my = (y1 + y2) / 2 + ux * 40;
+          const color = VECTORS[c.from - 1].color;
+          const isHovered = hoveredEdge === i;
+          return (
+            <g key={i} onMouseEnter={() => setHoveredEdge(i)} onMouseLeave={() => setHoveredEdge(null)} style={{ cursor: "default" }}>
+              <path
+                d={`M${x1},${y1} Q${mx},${my} ${x2},${y2}`}
+                fill="none"
+                stroke={color}
+                strokeWidth={isHovered ? 2 : 1.2}
+                strokeOpacity={isHovered ? 0.9 : 0.4}
+                markerEnd={`url(#arrow-${c.from})`}
+                style={{ transition: "stroke-opacity 0.2s, stroke-width 0.2s" }}
+              />
+              {isHovered && (
+                <text
+                  x={(x1 + x2) / 2 - uy * 52}
+                  y={(y1 + y2) / 2 + ux * 52}
+                  textAnchor="middle"
+                  fontSize="9"
+                  fontFamily="'JetBrains Mono', monospace"
+                  fill="rgba(241,250,238,0.7)"
+                >
+                  {c.label}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Nodes */}
+        {VECTORS.map(v => {
+          const { x, y } = NODE_POSITIONS[v.id];
+          return (
+            <g key={v.id}>
+              <circle cx={x} cy={y} r={R} fill={v.color} fillOpacity="0.15" stroke={v.color} strokeWidth="1.5" strokeOpacity="0.6" />
+              <text x={x} y={y - 10} textAnchor="middle" fontSize="18" dominantBaseline="middle">{v.icon}</text>
+              <text x={x} y={y + 12} textAnchor="middle" fontSize="10" fontWeight="700" fontFamily="'JetBrains Mono', monospace" fill="#F1FAEE" fillOpacity="0.9">{v.id}</text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 16px", marginTop: 14 }}>
+        {VECTORS.map(v => (
+          <div key={v.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.5)" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: v.color, display: "inline-block", flexShrink: 0 }} />
+            {v.id}. {v.title}
           </div>
         ))}
+      </div>
+      <div style={{ marginTop: 8, fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: "rgba(241,250,238,0.25)", fontStyle: "italic" }}>
+        Hover over edges to see connection labels
       </div>
     </div>
   );
@@ -352,8 +428,14 @@ function SB2Panel() {
 
 export default function AccountabilityFramework() {
   const [expandedVectors, setExpandedVectors] = useState(new Set([1]));
-  const [vectors, setVectors] = useState(VECTORS);
+  const [vectors, setVectors] = useState(() => {
+    try {
+      const saved = localStorage.getItem("af-vectors");
+      return saved ? JSON.parse(saved) : VECTORS;
+    } catch { return VECTORS; }
+  });
   const [activeTab, setActiveTab] = useState("vectors");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const toggleVector = (id) => {
     setExpandedVectors(prev => {
@@ -363,12 +445,19 @@ export default function AccountabilityFramework() {
     });
   };
 
+  const expandAll  = () => setExpandedVectors(new Set(vectors.map(v => v.id)));
+  const collapseAll = () => setExpandedVectors(new Set());
+
   const toggleAction = (vectorId, actionIdx) => {
-    setVectors(prev => prev.map(v => {
-      if (v.id !== vectorId) return v;
-      const newActions = v.actions.map((a, i) => i === actionIdx ? { ...a, done: !a.done } : a);
-      return { ...v, actions: newActions };
-    }));
+    setVectors(prev => {
+      const next = prev.map(v => {
+        if (v.id !== vectorId) return v;
+        const newActions = v.actions.map((a, i) => i === actionIdx ? { ...a, done: !a.done } : a);
+        return { ...v, actions: newActions };
+      });
+      localStorage.setItem("af-vectors", JSON.stringify(next));
+      return next;
+    });
   };
 
   const totalActions = vectors.reduce((s, v) => s + v.actions.length, 0);
@@ -376,8 +465,22 @@ export default function AccountabilityFramework() {
   const overallProgress = totalActions > 0 ? Math.round((completedActions / totalActions) * 100) : 0;
   const criticalCount = vectors.reduce((s, v) => s + v.actions.filter(a => a.priority === "CRITICAL" && !a.done).length, 0);
 
+  const criticalItems = vectors.flatMap(v =>
+    v.actions
+      .map((a, idx) => ({ ...a, vectorId: v.id, actionIdx: idx, vectorTitle: v.title, vectorColor: v.color, vectorAccent: v.accent }))
+      .filter(a => a.priority === "CRITICAL" && !a.done)
+  );
+
+  const filteredVectors = searchQuery
+    ? vectors.filter(v =>
+        v.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        v.actions.some(a => a.label.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : vectors;
+
   const tabs = [
     { key: "vectors", label: "Attack Vectors" },
+    { key: "critical", label: `Critical (${criticalCount})` },
     { key: "connections", label: "Interconnections" },
     { key: "penalties", label: "Criminal Exposure" },
   ];
@@ -445,10 +548,38 @@ export default function AccountabilityFramework() {
           ))}
         </div>
 
+        {/* Search + expand/collapse toolbar — vectors tab only */}
+        {activeTab === "vectors" && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+            <input
+              type="text"
+              placeholder="Search vectors or actions…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 4, padding: "7px 12px", color: "#F1FAEE", fontSize: 12,
+                fontFamily: "'JetBrains Mono', monospace", outline: "none",
+              }}
+            />
+            <button onClick={expandAll} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "rgba(241,250,238,0.5)", fontSize: 11, fontFamily: "'JetBrains Mono', monospace", padding: "7px 12px", cursor: "pointer" }}>
+              Expand All
+            </button>
+            <button onClick={collapseAll} style={{ background: "none", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, color: "rgba(241,250,238,0.5)", fontSize: 11, fontFamily: "'JetBrains Mono', monospace", padding: "7px 12px", cursor: "pointer" }}>
+              Collapse All
+            </button>
+          </div>
+        )}
+
         {/* Content */}
         {activeTab === "vectors" && (
           <div>
-            {vectors.map(v => (
+            {filteredVectors.length === 0 && (
+              <div style={{ textAlign: "center", padding: "40px 0", color: "rgba(241,250,238,0.25)", fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}>
+                No vectors match "{searchQuery}"
+              </div>
+            )}
+            {filteredVectors.map(v => (
               <VectorCard
                 key={v.id}
                 vector={v}
@@ -457,6 +588,31 @@ export default function AccountabilityFramework() {
                 onToggleAction={toggleAction}
               />
             ))}
+          </div>
+        )}
+        {activeTab === "critical" && (
+          <div>
+            {criticalItems.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 0", color: "rgba(82,183,136,0.7)", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
+                ✓ All critical actions complete
+              </div>
+            ) : (
+              criticalItems.map((item, i) => (
+                <div key={i} style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: item.vectorColor, marginBottom: 4, letterSpacing: 0.5, textTransform: "uppercase" }}>
+                    Vector {item.vectorId} — {item.vectorTitle}
+                  </div>
+                  <ActionItem
+                    action={item}
+                    color={item.vectorColor}
+                    accent={item.vectorAccent}
+                    vectorId={item.vectorId}
+                    idx={item.actionIdx}
+                    onToggle={toggleAction}
+                  />
+                </div>
+              ))
+            )}
           </div>
         )}
         {activeTab === "connections" && <ConnectionDiagram />}
